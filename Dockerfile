@@ -1,11 +1,8 @@
-# Use a lightweight Ubuntu image as the base
+# Use the official lightweight Ubuntu image as the base
 FROM ubuntu:22.04
 
 # Set environment variables to reduce interaction during installation
 ENV DEBIAN_FRONTEND=noninteractive
-
-# Set default platform (overridden during build)
-ARG TARGETPLATFORM
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -18,19 +15,17 @@ RUN apt-get update && apt-get install -y \
     sudo \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Conditional logic for platform-specific AWS CLI installation
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; \
-    elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"; \
-    else \
-        echo "Unsupported platform: $TARGETPLATFORM" && exit 1; \
-    fi && \
+# Build argument to handle platform-specific binaries
+ARG TARGETPLATFORM
+
+# Install AWS CLI
+RUN ARCH=$(dpkg --print-architecture) && \
+    curl -o "awscliv2.zip" "https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip" && \
     unzip awscliv2.zip && \
     ./aws/install && \
     rm -rf awscliv2.zip aws
 
-# Install Azure CLI (common for all platforms)
+# Install Azure CLI
 RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
 
 # Install Python libraries for AWS and Azure scripting
